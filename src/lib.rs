@@ -42,5 +42,5 @@ pub mod prelude {
     pub use crate::dispatch::{DispatchError, DispatchResult, Dispatcher, DispatcherBuilder};
     pub use crate::schema::{Priority, Task, TaskResult, TaskStatus};
     pub use crate::transport::TransportConfig;
-    pub use crate::worker::{WorkerPool, WorkerStatus};
+    pub use crate::worker::{PoolError, WorkerInfo, WorkerPool, WorkerStatus};
 }

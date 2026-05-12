@@ -76,6 +76,7 @@ async fn test_websocket_stop_sends_shutdown() {
             supported_tasks: vec!["a".to_string()],
             max_concurrency: 1,
             language: WorkerLanguage::TypeScript,
+            tags: None,
         },
     };
     write
@@ -124,6 +125,7 @@ async fn test_websocket_broadcast() {
                 supported_tasks: vec!["x".to_string()],
                 max_concurrency: 1,
                 language: WorkerLanguage::Python,
+                tags: None,
             },
         };
         write
@@ -219,6 +221,7 @@ async fn test_websocket_client_disconnect_cleanup() {
                 supported_tasks: vec!["a".to_string()],
                 max_concurrency: 1,
                 language: WorkerLanguage::Python,
+                tags: None,
             },
         };
         write
@@ -272,6 +275,7 @@ async fn test_websocket_outbound_send_failure() {
             supported_tasks: vec!["a".to_string()],
             max_concurrency: 1,
             language: WorkerLanguage::Go,
+            tags: None,
         },
     };
     write
@@ -368,6 +372,7 @@ async fn test_websocket_raw_tcp_handshake_failure() {
             supported_tasks: vec!["a".to_string()],
             max_concurrency: 1,
             language: WorkerLanguage::TypeScript,
+            tags: None,
         },
     };
     write
@@ -400,6 +405,7 @@ async fn test_websocket_send_after_client_disconnect() {
             supported_tasks: vec!["a".to_string()],
             max_concurrency: 5,
             language: WorkerLanguage::TypeScript,
+            tags: None,
         },
     };
     write
@@ -445,6 +451,7 @@ async fn test_websocket_disconnect_removes_from_transport() {
             supported_tasks: vec!["y".to_string()],
             max_concurrency: 1,
             language: WorkerLanguage::Go,
+            tags: None,
         },
     };
     write

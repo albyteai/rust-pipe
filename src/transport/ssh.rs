@@ -113,6 +113,7 @@ impl Transport for SshTransport {
                     supported_tasks: config.supported_tasks.clone(),
                     max_concurrency: 1,
                     language: super::WorkerLanguage::Other("ssh".to_string()),
+                    tags: None,
                 },
             };
             on_message(worker_id.clone(), reg_msg);

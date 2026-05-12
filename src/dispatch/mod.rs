@@ -9,14 +9,32 @@ use uuid::Uuid;
 use crate::schema::{Task, TaskResult};
 use crate::transport::websocket::WebSocketTransport;
 use crate::transport::{Message, Transport, TransportConfig, TransportError};
-use crate::worker::{WorkerInfo, WorkerPool, WorkerStatus};
+use crate::worker::{PoolError, WorkerInfo, WorkerPool, WorkerStatus};
 
 /// Builder for configuring a [`Dispatcher`].
-#[derive(Debug, Clone)]
 pub struct DispatcherBuilder {
     config: TransportConfig,
     heartbeat_timeout_ms: u64,
     dead_worker_check_interval_ms: u64,
+    max_pool_size: Option<u32>,
+    min_pool_size: Option<u32>,
+    on_pool_below_min: Option<Arc<dyn Fn(u32) + Send + Sync>>,
+}
+
+impl std::fmt::Debug for DispatcherBuilder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DispatcherBuilder")
+            .field("config", &self.config)
+            .field("heartbeat_timeout_ms", &self.heartbeat_timeout_ms)
+            .field(
+                "dead_worker_check_interval_ms",
+                &self.dead_worker_check_interval_ms,
+            )
+            .field("max_pool_size", &self.max_pool_size)
+            .field("min_pool_size", &self.min_pool_size)
+            .field("on_pool_below_min", &self.on_pool_below_min.is_some())
+            .finish()
+    }
 }
 
 impl Default for DispatcherBuilder {
@@ -25,6 +43,9 @@ impl Default for DispatcherBuilder {
             config: TransportConfig::default(),
             heartbeat_timeout_ms: 15_000,
             dead_worker_check_interval_ms: 5_000,
+            max_pool_size: None,
+            min_pool_size: None,
+            on_pool_below_min: None,
         }
     }
 }
@@ -59,9 +80,35 @@ impl DispatcherBuilder {
         self
     }
 
+    /// Set the maximum number of workers allowed in the pool.
+    /// Workers connecting beyond this limit will be rejected.
+    pub fn max_pool_size(mut self, max: u32) -> Self {
+        self.max_pool_size = Some(max);
+        self
+    }
+
+    /// Set the minimum pool size. When the pool drops below this threshold,
+    /// the `on_pool_below_min` callback is invoked.
+    pub fn min_pool_size(mut self, min: u32) -> Self {
+        self.min_pool_size = Some(min);
+        self
+    }
+
+    /// Set a callback to be invoked when the pool size drops below `min_pool_size`.
+    /// The callback receives the current pool size.
+    pub fn on_pool_below_min(mut self, cb: impl Fn(u32) + Send + Sync + 'static) -> Self {
+        self.on_pool_below_min = Some(Arc::new(cb));
+        self
+    }
+
     pub fn build(self) -> Dispatcher {
         Dispatcher {
-            pool: Arc::new(WorkerPool::new(self.heartbeat_timeout_ms)),
+            pool: Arc::new(WorkerPool::with_limits(
+                self.heartbeat_timeout_ms,
+                self.max_pool_size,
+                self.min_pool_size,
+                self.on_pool_below_min,
+            )),
             pending: Arc::new(DashMap::new()),
             transport: Arc::new(RwLock::new(None)),
             config: self.config,
@@ -147,6 +194,7 @@ impl Dispatcher {
                             active_tasks: 0,
                             registered_at: chrono::Utc::now(),
                             last_heartbeat: chrono::Utc::now(),
+                            tags: reg.tags.unwrap_or_default(),
                         });
                     }
                     Message::TaskResult { result } => {
@@ -268,6 +316,120 @@ impl Dispatcher {
     pub fn pool_stats(&self) -> crate::worker::PoolStats {
         self.pool.stats()
     }
+
+    /// List all connected workers with their full info.
+    pub fn workers(&self) -> Vec<WorkerInfo> {
+        self.pool.workers()
+    }
+
+    /// Set a worker's status to Draining. No new tasks will be routed to it,
+    /// but existing in-flight tasks will finish normally.
+    pub fn drain_worker(&self, worker_id: &str) -> Result<(), PoolError> {
+        self.pool.drain_worker(worker_id)
+    }
+
+    /// Force-remove a worker from the pool and fail all pending tasks assigned to it.
+    pub fn remove_worker(&self, worker_id: &str) -> Result<(), PoolError> {
+        self.pool.remove_worker(worker_id)?;
+        // Fail all pending tasks for this worker by dropping their senders
+        self.pending
+            .retain(|_task_id, pending_task| pending_task.worker_id != worker_id);
+        Ok(())
+    }
+
+    /// Dispatch a task to a specific worker by ID, bypassing least-loaded selection.
+    pub async fn dispatch_to(
+        &self,
+        worker_id: &str,
+        task: Task,
+    ) -> Result<DispatchResult, DispatchError> {
+        self.pool.reserve_specific_worker(worker_id)?;
+
+        let (tx, rx) = oneshot::channel();
+        let task_id = task.id;
+
+        self.pending.insert(
+            task_id,
+            PendingTask {
+                sender: tx,
+                worker_id: worker_id.to_string(),
+            },
+        );
+
+        // Send task to worker via transport
+        let transport_guard = self.transport.read().await;
+        let transport = transport_guard.as_ref().ok_or_else(|| {
+            self.pending.remove(&task_id);
+            self.pool.mark_task_completed(worker_id);
+            DispatchError::TransportNotStarted
+        })?;
+
+        if let Err(e) = transport
+            .send(worker_id, Message::TaskDispatch { task })
+            .await
+        {
+            self.pending.remove(&task_id);
+            self.pool.mark_task_completed(worker_id);
+            return Err(DispatchError::TransportError(e));
+        }
+
+        tracing::debug!(task_id = %task_id, worker_id = %worker_id, "Task dispatched to specific worker");
+
+        Ok(DispatchResult {
+            task_id,
+            receiver: rx,
+        })
+    }
+
+    /// Dispatch a task to a worker that has a matching tag.
+    /// Routes to the least-loaded worker among those with the specified tag.
+    pub async fn dispatch_with_tag(
+        &self,
+        tag: &str,
+        task: Task,
+    ) -> Result<DispatchResult, DispatchError> {
+        let worker_id = self
+            .pool
+            .select_and_reserve_with_tag(tag, &task.task_type)
+            .ok_or(DispatchError::NoWorkerAvailable {
+                task_type: task.task_type.clone(),
+            })?;
+
+        let (tx, rx) = oneshot::channel();
+        let task_id = task.id;
+
+        self.pending.insert(
+            task_id,
+            PendingTask {
+                sender: tx,
+                worker_id: worker_id.clone(),
+            },
+        );
+
+        // Send task to worker via transport
+        let transport_guard = self.transport.read().await;
+        let transport = transport_guard.as_ref().ok_or_else(|| {
+            self.pending.remove(&task_id);
+            self.pool.mark_task_completed(&worker_id);
+            DispatchError::TransportNotStarted
+        })?;
+
+        if let Err(e) = transport
+            .send(&worker_id, Message::TaskDispatch { task })
+            .await
+        {
+            self.pending.remove(&task_id);
+            self.pool.mark_task_completed(&worker_id);
+            return Err(DispatchError::TransportError(e));
+        }
+
+        tracing::debug!(task_id = %task_id, worker_id = %worker_id, tag = %tag, "Task dispatched with tag");
+
+        Ok(DispatchResult {
+            task_id,
+            receiver: rx,
+        })
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -286,6 +448,9 @@ pub enum DispatchError {
 
     #[error("Transport error: {0}")]
     TransportError(#[from] TransportError),
+
+    #[error("Pool error: {0}")]
+    PoolError(#[from] PoolError),
 }
 
 #[cfg(test)]
@@ -467,5 +632,70 @@ mod tests {
             dispatch_err,
             DispatchError::TransportError(TransportError::Closed)
         ));
+    }
+
+    // =========================================================================
+    // Pool management builder tests
+    // =========================================================================
+
+    #[test]
+    fn test_builder_max_pool_size() {
+        let builder = DispatcherBuilder::new().max_pool_size(10);
+        assert_eq!(builder.max_pool_size, Some(10));
+    }
+
+    #[test]
+    fn test_builder_min_pool_size() {
+        let builder = DispatcherBuilder::new().min_pool_size(2);
+        assert_eq!(builder.min_pool_size, Some(2));
+    }
+
+    #[test]
+    fn test_builder_on_pool_below_min() {
+        let builder = DispatcherBuilder::new().on_pool_below_min(|_| {});
+        assert!(builder.on_pool_below_min.is_some());
+    }
+
+    #[test]
+    fn test_builder_pool_limits_chaining() {
+        let builder = DispatcherBuilder::new()
+            .max_pool_size(50)
+            .min_pool_size(5)
+            .on_pool_below_min(|_| {});
+        assert_eq!(builder.max_pool_size, Some(50));
+        assert_eq!(builder.min_pool_size, Some(5));
+        assert!(builder.on_pool_below_min.is_some());
+    }
+
+    #[test]
+    fn test_dispatcher_workers_empty() {
+        let dispatcher = Dispatcher::builder().build();
+        assert!(dispatcher.workers().is_empty());
+    }
+
+    #[test]
+    fn test_dispatcher_drain_worker_not_found() {
+        let dispatcher = Dispatcher::builder().build();
+        let err = dispatcher.drain_worker("ghost").unwrap_err();
+        assert!(matches!(err, PoolError::WorkerNotFound { .. }));
+    }
+
+    #[test]
+    fn test_dispatcher_remove_worker_not_found() {
+        let dispatcher = Dispatcher::builder().build();
+        let err = dispatcher.remove_worker("ghost").unwrap_err();
+        assert!(matches!(err, PoolError::WorkerNotFound { .. }));
+    }
+
+    #[test]
+    fn test_builder_debug_format() {
+        let builder = DispatcherBuilder::new()
+            .max_pool_size(10)
+            .min_pool_size(2)
+            .on_pool_below_min(|_| {});
+        let debug = format!("{:?}", builder);
+        assert!(debug.contains("DispatcherBuilder"));
+        assert!(debug.contains("max_pool_size"));
+        assert!(debug.contains("min_pool_size"));
     }
 }

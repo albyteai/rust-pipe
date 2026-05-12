@@ -38,6 +38,7 @@ async fn test_dispatcher_starts_and_accepts_connections() {
             supported_tasks: vec!["test-task".to_string()],
             max_concurrency: 5,
             language: WorkerLanguage::TypeScript,
+            tags: None,
         },
     };
 
@@ -76,6 +77,7 @@ async fn test_full_task_dispatch_and_result() {
             supported_tasks: vec!["scan-target".to_string()],
             max_concurrency: 5,
             language: WorkerLanguage::TypeScript,
+            tags: None,
         },
     };
 
@@ -181,6 +183,7 @@ async fn test_websocket_worker_disconnect_cleanup() {
             supported_tasks: vec!["x".to_string()],
             max_concurrency: 1,
             language: WorkerLanguage::TypeScript,
+            tags: None,
         },
     };
     write
@@ -226,6 +229,7 @@ async fn test_websocket_invalid_json_ignored() {
             supported_tasks: vec!["y".to_string()],
             max_concurrency: 2,
             language: WorkerLanguage::Python,
+            tags: None,
         },
     };
     write
@@ -259,6 +263,7 @@ async fn test_websocket_multiple_workers_concurrent() {
                     supported_tasks: vec!["work".to_string()],
                     max_concurrency: 5,
                     language: WorkerLanguage::Go,
+                    tags: None,
                 },
             };
             write
@@ -311,6 +316,7 @@ async fn test_dispatcher_handles_backpressure_signal() {
             supported_tasks: vec!["x".to_string()],
             max_concurrency: 1,
             language: WorkerLanguage::TypeScript,
+            tags: None,
         },
     };
     write
@@ -382,6 +388,7 @@ async fn test_dispatcher_dead_worker_detection() {
             supported_tasks: vec!["x".to_string()],
             max_concurrency: 1,
             language: WorkerLanguage::TypeScript,
+            tags: None,
         },
     };
     write
@@ -450,6 +457,7 @@ async fn test_dispatch_dead_worker_detection_loop_fires() {
             supported_tasks: vec!["x".to_string()],
             max_concurrency: 1,
             language: WorkerLanguage::TypeScript,
+            tags: None,
         },
     };
     write

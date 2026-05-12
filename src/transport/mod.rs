@@ -66,6 +66,9 @@ pub struct WorkerRegistration {
     pub supported_tasks: Vec<String>,
     pub max_concurrency: u32,
     pub language: WorkerLanguage,
+    /// Optional tags for targeted dispatch routing.
+    #[serde(default)]
+    pub tags: Option<Vec<String>>,
 }
 
 /// Programming language of a connected worker.
@@ -191,6 +194,7 @@ mod tests {
                 supported_tasks: vec!["a".into(), "b".into()],
                 max_concurrency: 5,
                 language: WorkerLanguage::Python,
+                tags: None,
             },
         };
         let json = serde_json::to_string(&msg).unwrap();
@@ -352,12 +356,14 @@ mod tests {
             supported_tasks: vec!["a".into(), "b".into()],
             max_concurrency: 10,
             language: WorkerLanguage::Go,
+            tags: Some(vec!["gpu".into()]),
         };
         let json = serde_json::to_string(&reg).unwrap();
         let de: WorkerRegistration = serde_json::from_str(&json).unwrap();
         assert_eq!(de.worker_id, "w1");
         assert_eq!(de.supported_tasks.len(), 2);
         assert_eq!(de.max_concurrency, 10);
+        assert_eq!(de.tags, Some(vec!["gpu".to_string()]));
     }
 
     #[test]
@@ -367,6 +373,7 @@ mod tests {
             supported_tasks: vec![],
             max_concurrency: 1,
             language: WorkerLanguage::TypeScript,
+            tags: None,
         };
         let json = serde_json::to_string(&reg).unwrap();
         let de: WorkerRegistration = serde_json::from_str(&json).unwrap();
