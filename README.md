@@ -173,13 +173,13 @@ graph TB
 stateDiagram-v2
     direction LR
 
-    [*] --> Pending: Task::new()
-    Pending --> Dispatched: dispatch()
+    [*] --> Pending: created
+    Pending --> Dispatched: dispatched
     Dispatched --> Running: Worker receives
 
-    Running --> Completed: ✅ Success
-    Running --> Failed: ❌ Error
-    Running --> TimedOut: ⏱️ Deadline exceeded
+    Running --> Completed: Success
+    Running --> Failed: Error
+    Running --> TimedOut: Deadline exceeded
 
     Dispatched --> Failed: Transport error
     Running --> Cancelled: Kill signal
