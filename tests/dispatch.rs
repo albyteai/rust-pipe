@@ -1,3 +1,5 @@
+#![allow(clippy::collapsible_match)]
+
 use rust_pipe::dispatch::{DispatchError, Dispatcher};
 use rust_pipe::schema::{Priority, Task, TaskResult, TaskStatus};
 use rust_pipe::transport::{

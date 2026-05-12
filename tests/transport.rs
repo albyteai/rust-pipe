@@ -1,3 +1,5 @@
+#![allow(deprecated, clippy::collapsible_match, clippy::useless_vec)]
+
 use rust_pipe::dispatch::Dispatcher;
 use rust_pipe::schema::{Priority, Task, TaskStatus};
 use rust_pipe::transport::docker::{DockerTransport, DockerWorkerConfig};
