@@ -9,6 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   test:
@@ -20,8 +21,10 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
 
-      - name: Install jq
-        run: sudo apt-get install -y jq
+      - name: Install system dependencies
+        run: |
+          sudo apt-get install -y jq
+          pip install websockets
 
       - name: Check formatting
         run: cargo fmt --check
@@ -50,8 +53,10 @@ jobs:
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov
 
-      - name: Install jq
-        run: sudo apt-get install -y jq
+      - name: Install system dependencies
+        run: |
+          sudo apt-get install -y jq
+          pip install websockets
 
       - name: Generate coverage
         run: cargo llvm-cov --lcov --output-path lcov.info

@@ -2246,6 +2246,7 @@ async fn test_typescript_worker_e2e() {
 }
 
 /// Spawns a real Python worker as a subprocess and verifies end-to-end dispatch.
+/// Requires: python3 with websockets package (installed in CI)
 #[tokio::test]
 async fn test_python_worker_e2e() {
     let dispatcher = Dispatcher::builder().host("127.0.0.1").port(19901).build();
