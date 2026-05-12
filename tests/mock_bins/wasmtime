@@ -1,0 +1,29 @@
+#!/bin/bash
+# Mock wasmtime command for testing WasmTransport
+# Args: run --dir=. <module_path>
+# Behavior varies based on the module_path filename to support different test scenarios.
+
+MODULE_PATH="${@: -1}"
+MODULE_NAME=$(basename "$MODULE_PATH")
+
+case "$MODULE_NAME" in
+  "module_timeout")
+    # Simulate a slow execution that will be killed by timeout
+    sleep 10
+    echo '{"result": "should-never-get-here"}'
+    ;;
+  "module_bad_json")
+    # Output non-JSON to trigger parse error
+    echo "not json at all"
+    ;;
+  "module_fail")
+    # Exit with non-zero to trigger execution error
+    echo "wasm module trap: unreachable executed" >&2
+    exit 1
+    ;;
+  *)
+    # Default: read input and echo back success JSON
+    read -r input
+    echo "{\"result\": \"wasm-executed\", \"input_length\": ${#input}}"
+    ;;
+esac

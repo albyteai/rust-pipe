@@ -1,0 +1,3 @@
+#!/bin/bash
+# Mock stdio worker that exits immediately, closing stdin pipe
+exit 0

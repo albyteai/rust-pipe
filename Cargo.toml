@@ -1,0 +1,33 @@
+[package]
+name = "rust-pipe"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "Lightweight typed task dispatch from Rust to polyglot workers (TypeScript, Python, Go, Java, C#, Ruby, Elixir, Swift, PHP)"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/albyte-ai/rust-pipe"
+homepage = "https://github.com/albyte-ai/rust-pipe"
+documentation = "https://docs.rs/rust-pipe"
+keywords = ["dispatch", "polyglot", "orchestration", "workers", "cross-language"]
+categories = ["asynchronous", "network-programming", "concurrency"]
+include = ["src/**/*", "examples/**/*", "tests/**/*", "Cargo.toml", "LICENSE-*", "README.md", "CHANGELOG.md"]
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+tracing = "0.1"
+dashmap = "6"
+tokio-tungstenite = "0.24"
+futures-util = "0.3"
+async-trait = "0.1"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tracing-subscriber = "0.3"
+anyhow = "1"
+serial_test = "3.4.0"

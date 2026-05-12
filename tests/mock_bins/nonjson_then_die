@@ -1,0 +1,7 @@
+#!/bin/bash
+# Outputs non-JSON garbage then exits
+echo "INFO: booting up worker..."
+echo "WARNING: some diagnostic"
+echo "ERROR: {malformed json"
+sleep 0.1
+exit 0

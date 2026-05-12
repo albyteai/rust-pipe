@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>RustPipe</RootNamespace>
+    <PackageId>RustPipe.Worker</PackageId>
+    <Version>0.1.0</Version>
+    <Description>C#/.NET worker SDK for rust-pipe — receive typed tasks from a Rust dispatcher</Description>
+    <Authors>Albin</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Net.WebSockets.Client" Version="4.3.2" />
+  </ItemGroup>
+
+</Project>

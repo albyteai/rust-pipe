@@ -1,0 +1,34 @@
+#!/bin/bash
+# Mock docker command for testing DockerTransport
+# Handles: docker run, docker attach, docker stop
+
+case "$1" in
+  "run")
+    # Return a fake container ID
+    echo "mock-container-abc123"
+    exit 0
+    ;;
+  "attach")
+    # Act as a stdio worker — read JSON from stdin, write JSON to stdout
+    while IFS= read -r line; do
+      msg_type=$(echo "$line" | jq -r '.type // empty' 2>/dev/null)
+      case "$msg_type" in
+        "TaskDispatch")
+          task_id=$(echo "$line" | jq -r '.task.id')
+          task_type=$(echo "$line" | jq -r '.task.taskType')
+          echo "{\"type\":\"TaskResult\",\"result\":{\"taskId\":\"$task_id\",\"status\":\"Completed\",\"payload\":{\"source\":\"docker\",\"taskType\":\"$task_type\"},\"durationMs\":5,\"workerId\":\"docker-mock\"}}"
+          ;;
+        "Shutdown")
+          exit 0
+          ;;
+      esac
+    done
+    ;;
+  "stop")
+    exit 0
+    ;;
+  *)
+    echo "mock docker: unknown command $1" >&2
+    exit 1
+    ;;
+esac

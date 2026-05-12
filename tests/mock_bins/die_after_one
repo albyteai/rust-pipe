@@ -1,0 +1,12 @@
+#!/bin/bash
+# Worker that processes one task then dies (simulates process crash)
+# This triggers stdin write errors on subsequent sends and stdout closed path
+read -r line
+task_id=$(echo "$line" | jq -r '.task.id' 2>/dev/null)
+task_type=$(echo "$line" | jq -r '.type' 2>/dev/null)
+
+if [ "$task_type" = "TaskDispatch" ]; then
+  echo "{\"type\":\"TaskResult\",\"result\":{\"taskId\":\"$task_id\",\"status\":\"Completed\",\"payload\":{\"msg\":\"bye\"},\"durationMs\":1,\"workerId\":\"dying\"}}"
+fi
+# Exit immediately — pipe breaks for next write
+exit 0

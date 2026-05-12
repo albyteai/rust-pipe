@@ -1,0 +1,4 @@
+#!/bin/bash
+# Mock ssh that fails to connect
+echo "ssh: connect to host failed: Connection refused" >&2
+exit 255

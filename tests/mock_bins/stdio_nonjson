@@ -1,0 +1,14 @@
+#!/bin/bash
+# Worker that outputs non-JSON lines mixed with valid responses
+echo "DEBUG: starting up..."
+echo "WARNING: some internal log"
+read -r line
+task_id=$(echo "$line" | jq -r '.task.id' 2>/dev/null)
+if [ -n "$task_id" ] && [ "$task_id" != "null" ]; then
+  echo "{\"type\":\"TaskResult\",\"result\":{\"taskId\":\"$task_id\",\"status\":\"Completed\",\"payload\":{\"ok\":true},\"durationMs\":1,\"workerId\":\"nonjson-worker\"}}"
+fi
+# Output more garbage after
+echo "some trailing garbage"
+read -r line2
+# Exit on shutdown or second message
+exit 0

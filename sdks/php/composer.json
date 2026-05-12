@@ -1,0 +1,16 @@
+{
+    "name": "rust-pipe/worker",
+    "description": "PHP worker SDK for rust-pipe — receive typed tasks from a Rust dispatcher",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.2",
+        "textalk/websocket": "^1.6",
+        "ramsey/uuid": "^4.7"
+    },
+    "autoload": {
+        "psr-4": {
+            "RustPipe\\": "src/"
+        }
+    }
+}

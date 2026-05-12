@@ -1,0 +1,26 @@
+{
+  "name": "@rust-pipe/worker",
+  "version": "0.1.0",
+  "description": "TypeScript worker SDK for rust-pipe — receive typed tasks from a Rust dispatcher",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "ws": "^8.18.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.0",
+    "typescript": "^5.6.0",
+    "tsx": "^4.19.0",
+    "vitest": "^2.1.0"
+  },
+  "keywords": ["rust", "worker", "dispatch", "cross-language", "polyglot"],
+  "license": "MIT"
+}

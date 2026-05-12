@@ -1,0 +1,4 @@
+#!/bin/bash
+# Mock docker that fails on "run" command
+echo "Error: image not found" >&2
+exit 1
